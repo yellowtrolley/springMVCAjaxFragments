@@ -1,0 +1,11 @@
+// Spring Roo 1.2.4.RELEASE [rev 75337cf] log opened at 2014-02-12 14:35:08
+project --topLevelPackage org.pgg --projectName springMVCAjaxFragments --java 7 --packaging WAR
+jpa setup --database HYPERSONIC_IN_MEMORY --provider HIBERNATE
+entity jpa --class ~.domain.Foo
+field string --fieldName bar
+web mvc setup 
+web mvc all --package ~.web
+// script --file springMVCAjaxFragments.roo
+exit
+// Spring Roo 1.2.4.RELEASE [rev 75337cf] log closed at 2014-02-12 14:38:08
+// Spring Roo 1.2.4.RELEASE [rev 75337cf] log opened at 2014-02-12 14:41:21

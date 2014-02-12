@@ -1,0 +1,161 @@
+SPRING MVC, TILES AND AJAX TO RENDER FRAGMENTS WITHOUT LOADING THE WHOLE PAGE TO UPDATE THE MODEL
+
+
+# Roo shell commands
+project --topLevelPackage org.pgg --projectName springMVCAjaxFragments --java 7 --packaging WAR
+jpa setup --database HYPERSONIC_IN_MEMORY --provider HIBERNATE
+entity jpa --class ~.domain.Foo
+field string --fieldName bar
+web mvc setup 
+web mvc all --package ~.web
+
+exit
+
+# Import project in Eclipse
+File -> Import -> Maven -> Existing Maven Projects. Select springMVCAjaxFragments folder
+
+# Configuration
+1. Add dependency to pom.xml
+	<dependency>
+		<groupId>org.springframework.webflow</groupId>
+		<artifactId>spring-js</artifactId>
+		<version>2.3.2.RELEASE</version>
+	</dependency>
+
+2. Edit webvc-config.xml (or whatever servlet config file) to add ajax view resolver
+Replace:
+	<bean class="org.springframework.web.servlet.view.UrlBasedViewResolver" id="tilesViewResolver">
+    	<property name="viewClass" value="org.springframework.web.servlet.view.tiles2.TilesView"/>
+  	</bean>
+With:
+	<bean class="org.springframework.js.ajax.AjaxUrlBasedViewResolver" id="ajaxViewResolver" p:order="0">
+	   <property name="viewClass" value="org.springframework.js.ajax.tiles2.AjaxTilesView"/>
+	</bean>
+	<bean class="org.springframework.web.servlet.view.UrlBasedViewResolver" id="tilesViewResolver" p:order="1">
+    	<property name="viewClass" value="org.springframework.web.servlet.view.tiles2.TilesView"/>
+  	</bean>
+This demo would work with ajaxViewResolver bean only but we can have both view resolvers and use "order" parameter.
+
+# Demo
+1. Create /WEB-INF/views/fragment.jspx
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<div id ="fragment_div" xmlns:c="http://java.sun.com/jsp/jstl/core" xmlns:jsp="http://java.sun.com/JSP/Page" xmlns:page="urn:jsptagdir:/WEB-INF/tags/form" version="2.0">
+    <jsp:directive.page contentType="text/html;charset=UTF-8"/>
+    <jsp:output omit-xml-declaration="yes"/>
+    <c:if test="${not empty anything}">
+    	<h1>${anything}</h1>
+    </c:if>
+</div>
+
+
+2. Edit /WEB-INF/layouts/layouts.xml Tiles definition with <put-attribute name="fragment" value="/WEB-INF/views/fragment.jspx"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE tiles-definitions PUBLIC "-//Apache Software Foundation//DTD Tiles Configuration 2.1//EN" "http://tiles.apache.org/dtds/tiles-config_2_1.dtd">
+
+<tiles-definitions>
+  <definition name="default" template="/WEB-INF/layouts/default.jspx">
+    <put-attribute name="header" value="/WEB-INF/views/header.jspx" />
+    <put-attribute name="fragment" value="/WEB-INF/views/fragment.jspx" />
+    <put-attribute name="menu" value="/WEB-INF/views/menu.jspx" />
+    <put-attribute name="footer" value="/WEB-INF/views/footer.jspx" />
+  </definition>
+
+  <definition name="public" template="/WEB-INF/layouts/default.jspx">
+    <put-attribute name="header" value="/WEB-INF/views/header.jspx" />
+    <put-attribute name="footer" value="/WEB-INF/views/footer.jspx" />
+  </definition>
+</tiles-definitions>
+
+
+3. Edit /WEB-INF/layouts/default.jspx template layout
+<html xmlns:jsp="http://java.sun.com/JSP/Page" xmlns:c="http://java.sun.com/jsp/jstl/core" xmlns:tiles="http://tiles.apache.org/tags-tiles" xmlns:spring="http://www.springframework.org/tags" xmlns:util="urn:jsptagdir:/WEB-INF/tags/util" >  
+	<jsp:output doctype-root-element="HTML" doctype-system="about:legacy-compat" />
+	<jsp:directive.page contentType="text/html;charset=UTF-8" />  
+	<jsp:directive.page pageEncoding="UTF-8" /> 
+			
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=8" />	
+			
+		<util:load-scripts />
+		
+		<spring:message code="application_name" var="app_name" htmlEscape="false"/>
+		<title><spring:message code="welcome_h3" arguments="${app_name}" /></title>
+	</head>
+	
+  	<body class="tundra spring">
+   		<div id="wrapper">
+		    <tiles:insertAttribute name="header" ignore="true" />
+			<tiles:insertAttribute name="fragment" ignore="true" />
+		    <tiles:insertAttribute name="menu" ignore="true" />   
+		    <div id="main">
+	    		<tiles:insertAttribute name="body"/> 
+		    	<tiles:insertAttribute name="footer" ignore="true"/>
+		    </div>
+		</div>
+	</body>
+</html>
+
+
+
+4. Edit FooController.java
+package org.pgg.web;
+import javax.servlet.http.HttpServletRequest;
+
+import org.pgg.domain.Foo;
+import org.springframework.roo.addon.web.mvc.controller.scaffold.RooWebScaffold;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+@RequestMapping("/foos")
+@Controller
+@RooWebScaffold(path = "foos", formBackingObject = Foo.class)
+public class FooController {
+	
+	@RequestMapping(value = "/demo", produces = "text/html")
+	public String show(Model uiModel, HttpServletRequest request) {
+	    uiModel.addAttribute("anything", "No need to load the whole page every time I want to update the model!");
+	    return "index";
+	}
+}
+
+
+5. Edit /WEB-INF/views/index.jsp
+<div xmlns:c="http://java.sun.com/jsp/jstl/core" xmlns:spring="http://www.springframework.org/tags" xmlns:util="urn:jsptagdir:/WEB-INF/tags/util" xmlns:jsp="http://java.sun.com/JSP/Page" version="2.0">
+  <jsp:directive.page contentType="text/html;charset=UTF-8" />
+  <jsp:output omit-xml-declaration="yes" />
+  
+  <spring:url value="/foos/demo?fragments=fragment" var="showFragment"/>
+  <script language="JavaScript" type="text/javascript">
+	dojo.addOnLoad(function() {
+	    dojo.connect(dojo.byId("showFragmentLink"), "onclick", function(event) {
+	    	dojo.stopEvent(event);
+			dojo.xhrGet({
+			    url: "${showFragment}",
+			    headers: {"Accept": "text/html;type=ajax"},
+			    load: function(newContent) {
+			        dojo.byId("fragment_div").innerHTML = newContent;
+			    },
+			    error: function(e) {
+			    	console.log("Ajax call failed", e);
+			    }
+			});
+	    });
+	});
+  </script>
+  
+  <spring:message var="app_name" code="application_name" htmlEscape="false" />
+  <spring:message var="title" code="welcome_titlepane" arguments="${app_name}" htmlEscape="false" />
+  <util:panel id="title" title="${title}">
+    <p>
+    	<h3>When <a href="#" id="showFragmentLink"> this link</a> is clicked, only the fragment below header is displayed. But not below this line</h3>
+        <c:if test="${not empty anything}">
+	    	<h1>${anything}</h1>
+	    </c:if>
+    </p>
+  </util:panel>
+</div>
+
+
+

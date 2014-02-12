@@ -1,0 +1,63 @@
+<div xmlns:c="http://java.sun.com/jsp/jstl/core" xmlns:spring="http://www.springframework.org/tags" xmlns:util="urn:jsptagdir:/WEB-INF/tags/util" xmlns:jsp="http://java.sun.com/JSP/Page" version="2.0">
+  <jsp:directive.page contentType="text/html;charset=UTF-8" />
+  <jsp:output omit-xml-declaration="yes" />
+  
+  
+  <spring:url value="/foos/demo?fragments=fragment" var="showFragment"/>
+  <script language="JavaScript" type="text/javascript">
+  /*
+		$(function(){
+			$("#showFragmentLink").on("click", function(e) {
+				e.preventDefault();
+				$.ajax( {
+		            headers: {"Accept": "text/html;type=ajax"},
+		    		type: 'GET',
+		    		url: "${showFragment}",
+		    		processData: false,
+		    		success: function(data){
+		    			console.log("Success");
+		    			$("#fragment_div").html(data);
+		    		},
+		    		error: function(e) {
+		    			console.log("Error");
+		    			console.log(e.responseText);
+		    		},
+		    		complete: function(e) {
+		    			console.log("Complete");
+		    			console.log(e.responseText);
+		    		}
+		    	} );
+				
+			});
+		}); // end jQuery load
+	*/
+	
+	
+	dojo.addOnLoad(function() {
+	    dojo.connect(dojo.byId("showFragmentLink"), "onclick", function(event) {
+	    	dojo.stopEvent(event);
+			dojo.xhrGet({
+			    url: "${showFragment}",
+			    headers: {"Accept": "text/html;type=ajax"},
+			    load: function(newContent) {
+			        dojo.byId("fragment_div").innerHTML = newContent;
+			    },
+			    error: function(e) {
+			    	console.log("Ajax call failed", e);
+			    }
+			});
+	    });
+	});
+  </script>
+  
+  <spring:message var="app_name" code="application_name" htmlEscape="false" />
+  <spring:message var="title" code="welcome_titlepane" arguments="${app_name}" htmlEscape="false" />
+  <util:panel id="title" title="${title}">
+    <p>
+    	<h3>When <a href="#" id="showFragmentLink"> this link</a> is clicked, only the fragment below header is displayed. But not below this line</h3>
+        <c:if test="${not empty anything}">
+	    	<h1>${anything}</h1>
+	    </c:if>
+    </p>
+  </util:panel>
+</div>
